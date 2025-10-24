@@ -1,0 +1,78 @@
+import org.yaml.snakeyaml.Yaml
+
+node {
+    checkout scm
+
+    def image_name = 'wafermap-defect-detector-python311-cpu'
+    def project_version
+    def buildNumber = env.BUILD_NUMBER  // Jenkins 内置构建号
+    def buildTimestamp   // yyyyMMddHHmm
+    def image_version
+    def registry_url = 'registry.cn-shanghai.aliyuncs.com'
+    def registry_user = 'mhzboy2008'
+    def registry_pswd = 'gte123456'
+    def registry_namespace = 'pers_gte'
+    def git_config_email = 'dboyiii@163.com'
+    def git_config_username = 'gutianen'
+    def git_project_name = 'llm_wafer_map_defect_detector'
+
+
+    stage('1.拉取基础镜像') {
+        sh "docker pull python:3.11-slim"
+        echo '基础镜像拉取完成'
+    }
+
+    stage('2.启动 Buildx 构建流程') {
+        sh "docker buildx use default"
+        echo '构建流程创建完毕'
+    }
+
+    stage('3.构建Docker镜像') {
+        project_version = getProjectVersion("application.yml")
+        echo "读取项目版本号：${project_version}"
+        buildTimestamp = getBuildTimestamp()
+        image_version = "${project_version}-${buildNumber}-${buildTimestamp}"
+        echo "本次构建版本号：${image_version}"
+
+        sh "docker buildx build --platform linux/amd64 -f Dockerfile.cpu -t ${image_name}:${image_version}  --load ."
+        echo "docker镜像构建完毕：${image_name}:${image_version}"
+    }
+
+    stage('4.Docker镜像推送到阿里云私仓') {
+        sh "docker login -u ${registry_user} -p ${registry_pswd} ${registry_url}"
+        sh "docker tag ${image_name}:${image_version} ${registry_url}/${registry_namespace}/${image_name}:${image_version}"
+        sh "docker push ${registry_url}/${registry_namespace}/${image_name}:${image_version}"
+        sh "docker logout ${registry_url}"
+        echo "docker镜像推送完毕：${registry_url}/${registry_namespace}/${image_name}:${image_version}"
+    }
+
+    stage('5.Git标签') {
+        withCredentials([usernamePassword(
+            credentialsId: '9adaff58-988c-4b97-bc54-8e536798ec75',
+            usernameVariable: 'GIT_USERNAME',
+            passwordVariable: 'GIT_PASSWORD'
+        )]) {
+            sh "git config --global user.email ${git_config_email}"
+            sh "git config --global user.name ${git_config_username}"
+            sh "git remote set-url origin https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/${git_config_username}/${git_project_name}.git"
+            sh "git tag ${image_version}"
+            sh "git push origin ${image_version}"
+        }
+        echo "Git标签推送完毕：${image_version}"
+    }
+}
+
+def getProjectVersion(filePath) {
+    // Jenkins 内置方法，读取 YAML 文件内容
+    def yamlContent = readFile(file: filePath)
+    def yaml = new Yaml()
+    def data = yaml.load(yamlContent)  // 解析为 Groovy 字典（Map）
+    // 提取版本号（对应 YAML 中的 project.version）， 项目版本号跟镜像版本号一致
+    return data.project.version.trim()
+}
+
+def getBuildTimestamp() {
+    def timestamp = new java.text.SimpleDateFormat("yyyyMMddHHmm").format(new Date())
+    return timestamp
+}
+

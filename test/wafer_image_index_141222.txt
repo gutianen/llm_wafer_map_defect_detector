@@ -1,0 +1,3 @@
+# process_params: temperature=935.9℃, pressure=42.4Pa, material=单晶硅, etch_time=72s, edge_etch_rate=1.6μm/min
+# defect_features: 距边缘2-5mm处形成闭合环形缺陷，密度均匀，可能与边缘刻蚀速率异常相关
+3 0.4987980769230769 0.5 0.9975961538461539 1
