@@ -16,6 +16,14 @@ node {
     def git_config_username = 'gutianen'
     def git_project_name = 'llm_wafer_map_defect_detector'
 
+    stage('同步模型文件') {
+         script {
+            // 若 Jenkins 部署在本地主机的 Docker 中，可通过宿主机命令拷贝
+            sh "docker exec jenkins mkdir -p /var/jenkins_home/workspace/llm_wafermap_defect_detector_ci/models"
+            sh "docker cp /home/gutianen/work/AI大模型培训/交大培训/大模型正式课/models/clip-vit-base-patch32 jenkins:/var/jenkins_home/workspace/llm_wafermap_defect_detector_ci/models/"
+            sh "docker exec jenkins chown -R jenkins:jenkins /var/jenkins_home/workspace/llm_wafermap_defect_detector_ci/models"
+         }
+    }
 
     stage('1.拉取基础镜像') {
         sh "docker pull python:3.11-slim"
