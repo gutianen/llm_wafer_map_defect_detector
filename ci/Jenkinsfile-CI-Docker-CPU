@@ -17,20 +17,8 @@ node {
     def git_project_name = 'llm_wafer_map_defect_detector'
 
     stage('同步模型文件') {
-        sshPublisher(publishers: [sshPublisherDesc(
-            configName: '本地宿主机',  // 对应步骤 1 中配置的 SSH 服务器名称
-            transfers: [sshTransfer(
-                // 无需传输文件，仅执行命令
-                sourceFiles: '',
-                execCommand: '''
-                    # 宿主机执行 docker cp，源路径是宿主机的绝对路径
-                    docker exec jenkins mkdir -p /var/jenkins_home/workspace/llm_wafermap_defect_detector_ci/models
-                    docker cp /home/gutianen/work/AI大模型培训/交大培训/大模型正式课/models/clip-vit-base-patch32 jenkins:/var/jenkins_home/workspace/llm_wafermap_defect_detector_ci/models/
-                    docker exec jenkins chown -R jenkins:jenkins /var/jenkins_home/workspace/llm_wafermap_defect_detector_ci/models
-                    echo "模型文件从宿主机拷贝到 Jenkins 容器完成"
-                '''
-            )]
-        )])
+        sh "docker exec jenkins chown -R jenkins:jenkins /var/jenkins_home/workspace/llm_wafermap_defect_detector_ci/models"
+        echo "模型目录挂载并修正权限完成"
     }
 
     stage('1.拉取基础镜像') {
